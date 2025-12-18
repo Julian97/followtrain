@@ -1,0 +1,22 @@
+# Caddyfile for frontend
+:8080
+
+root * /usr/share/caddy
+file_server
+
+# Proxy API requests to backend service
+route /api* {
+    uri strip_prefix /api
+    reverse_proxy backend:3001
+}
+
+# Handle React Router
+try_files {path} /index.html
+
+header {
+    # Security headers
+    X-Frame-Options "SAMEORIGIN"
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "no-referrer-when-downgrade"
+    Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'"
+}

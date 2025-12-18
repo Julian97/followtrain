@@ -6,7 +6,7 @@ const API_BASE = window.env?.REACT_APP_API_URL ||
   process.env.REACT_APP_API_URL || 
   (window.location.hostname === 'localhost' 
     ? 'http://localhost:3001/api'
-    : 'https://followtrain.zeabur.app/api');
+    : '/api');
 
 const FollowTrain = () => {
   const [trains, setTrains] = useState({});
