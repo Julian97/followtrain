@@ -6,6 +6,8 @@
     "dir": "."
   },
   "deploy": {
+    "type": "dockerfile",
+    "dockerfilePath": "./Dockerfile",
     "port": 80
   },
   "envVars": {
