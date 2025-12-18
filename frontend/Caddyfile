@@ -1,7 +1,7 @@
 # Caddyfile for frontend
 :8080
 
-root * /usr/share/caddy
+root * /app/build
 file_server
 
 # Proxy API requests to backend service
