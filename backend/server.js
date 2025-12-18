@@ -4,6 +4,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { Pool } = require('pg');
+const { initializeRedis } = require('./redisClient');
+const { getCachedData, setCachedData, CACHE_TTL } = require('./cache');
 
 // Load dotenv only in development
 if (process.env.NODE_ENV !== 'production') {
@@ -37,9 +39,17 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Social Media API integrations
+// Social Media API integrations with Redis caching
 const socialMediaAPI = {
   async fetchInstagramProfile(username) {
+    // Check cache first
+    const cacheKey = `profile:instagram:${username}`;
+    const cachedData = await getCachedData(cacheKey);
+    if (cachedData) {
+      console.log(`Instagram profile cache hit for ${username}`);
+      return cachedData;
+    }
+    
     // Instagram Basic Display API integration
     try {
       // Note: Instagram's API requires app approval for production
@@ -47,7 +57,7 @@ const socialMediaAPI = {
       if (!response.ok) throw new Error('Instagram API failed');
       
       const data = await response.json();
-      return {
+      const profileData = {
         username: data.username,
         displayName: data.username,
         bio: data.biography || '',
@@ -55,6 +65,11 @@ const socialMediaAPI = {
         followers: data.followers_count || 0,
         isVerified: data.is_verified || false
       };
+      
+      // Cache the result
+      await setCachedData(cacheKey, profileData, CACHE_TTL.PROFILE);
+      
+      return profileData;
     } catch (error) {
       console.error('Instagram API error:', error);
       return null;
@@ -62,6 +77,14 @@ const socialMediaAPI = {
   },
 
   async fetchTwitterProfile(username) {
+    // Check cache first
+    const cacheKey = `profile:twitter:${username}`;
+    const cachedData = await getCachedData(cacheKey);
+    if (cachedData) {
+      console.log(`Twitter profile cache hit for ${username}`);
+      return cachedData;
+    }
+    
     // Twitter API v2 integration
     try {
       const response = await fetch(
@@ -78,7 +101,7 @@ const socialMediaAPI = {
       const result = await response.json();
       const user = result.data;
       
-      return {
+      const profileData = {
         username: user.username,
         displayName: user.name,
         bio: user.description || '',
@@ -86,6 +109,11 @@ const socialMediaAPI = {
         followers: user.public_metrics?.followers_count || 0,
         isVerified: user.verified || false
       };
+      
+      // Cache the result
+      await setCachedData(cacheKey, profileData, CACHE_TTL.PROFILE);
+      
+      return profileData;
     } catch (error) {
       console.error('Twitter API error:', error);
       return null;
@@ -93,6 +121,14 @@ const socialMediaAPI = {
   },
 
   async fetchLinkedInProfile(username) {
+    // Check cache first
+    const cacheKey = `profile:linkedin:${username}`;
+    const cachedData = await getCachedData(cacheKey);
+    if (cachedData) {
+      console.log(`LinkedIn profile cache hit for ${username}`);
+      return cachedData;
+    }
+    
     // LinkedIn API integration (requires partnership)
     try {
       const response = await fetch(
@@ -109,7 +145,7 @@ const socialMediaAPI = {
       if (!response.ok) throw new Error('LinkedIn API failed');
       
       const data = await response.json();
-      return {
+      const profileData = {
         username: username,
         displayName: `${data.localizedFirstName} ${data.localizedLastName}`,
         bio: data.headline || '',
@@ -117,6 +153,11 @@ const socialMediaAPI = {
         followers: 0, // LinkedIn doesn't provide follower count in basic API
         isVerified: false
       };
+      
+      // Cache the result
+      await setCachedData(cacheKey, profileData, CACHE_TTL.PROFILE);
+      
+      return profileData;
     } catch (error) {
       console.error('LinkedIn API error:', error);
       return null;
@@ -136,7 +177,7 @@ const socialMediaAPI = {
   }
 };
 
-// Database queries
+// Database queries with Redis caching
 const dbQueries = {
   async createTrain(train) {
     const query = `
@@ -157,23 +198,45 @@ const dbQueries = {
     const result = await pool.query(query, values);
     const row = result.rows[0];
     
-    return {
+    const trainData = {
       ...row,
       participants: JSON.parse(row.participants)
     };
+    
+    // Cache the newly created train
+    const cacheKey = `train:${train.id}`;
+    await setCachedData(cacheKey, trainData, CACHE_TTL.TRAIN);
+    
+    // Invalidate stats cache
+    await deleteCachedData('stats:all');
+    
+    return trainData;
   },
 
   async getTrain(trainId) {
+    // Check cache first
+    const cacheKey = `train:${trainId}`;
+    const cachedData = await getCachedData(cacheKey);
+    if (cachedData) {
+      console.log(`Train cache hit for ${trainId}`);
+      return cachedData;
+    }
+    
     const query = 'SELECT * FROM trains WHERE id = $1 AND expires_at > NOW()';
     const result = await pool.query(query, [trainId]);
     
     if (result.rows.length === 0) return null;
     
     const row = result.rows[0];
-    return {
+    const trainData = {
       ...row,
       participants: JSON.parse(row.participants)
     };
+    
+    // Cache the result
+    await setCachedData(cacheKey, trainData, CACHE_TTL.TRAIN);
+    
+    return trainData;
   },
 
   async updateTrain(trainId, updates) {
@@ -194,15 +257,32 @@ const dbQueries = {
     if (result.rows.length === 0) return null;
     
     const row = result.rows[0];
-    return {
+    const trainData = {
       ...row,
       participants: typeof row.participants === 'string' 
         ? JSON.parse(row.participants) 
         : row.participants
     };
+    
+    // Update cache
+    const cacheKey = `train:${trainId}`;
+    await setCachedData(cacheKey, trainData, CACHE_TTL.TRAIN);
+    
+    // Invalidate stats cache
+    await deleteCachedData('stats:all');
+    
+    return trainData;
   },
 
   async getTrainStats() {
+    // Check cache first
+    const cacheKey = 'stats:all';
+    const cachedData = await getCachedData(cacheKey);
+    if (cachedData) {
+      console.log('Stats cache hit');
+      return cachedData;
+    }
+    
     const query = `
       SELECT 
         COUNT(*) as total_trains,
@@ -215,7 +295,12 @@ const dbQueries = {
     `;
     
     const result = await pool.query(query);
-    return result.rows;
+    const statsData = result.rows;
+    
+    // Cache the result
+    await setCachedData(cacheKey, statsData, CACHE_TTL.STATS);
+    
+    return statsData;
   }
 };
 
@@ -342,14 +427,10 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`FollowTrain API server running on port ${PORT}`);
-});
-
-// Database initialization
-async function initializeDatabase() {
+// Initialize services
+async function initializeServices() {
   try {
+    // Initialize database
     await pool.query(`
       CREATE TABLE IF NOT EXISTS trains (
         id VARCHAR(10) PRIMARY KEY,
@@ -365,11 +446,47 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_trains_created_at ON trains(created_at);
       CREATE INDEX IF NOT EXISTS idx_trains_expires_at ON trains(expires_at);
     `);
-    
     console.log('Database initialized successfully');
+    
+    // Initialize Redis
+    await initializeRedis();
   } catch (error) {
-    console.error('Database initialization error:', error);
+    console.error('Service initialization error:', error);
   }
 }
 
-initializeDatabase();
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('Received SIGINT signal, shutting down gracefully...');
+  
+  // Close database pool
+  await pool.end();
+  console.log('Database connection closed');
+  
+  // Close Redis connection
+  const { shutdownRedis } = require('./redisClient');
+  await shutdownRedis();
+  
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('Received SIGTERM signal, shutting down gracefully...');
+  
+  // Close database pool
+  await pool.end();
+  console.log('Database connection closed');
+  
+  // Close Redis connection
+  const { shutdownRedis } = require('./redisClient');
+  await shutdownRedis();
+  
+  process.exit(0);
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`FollowTrain API server running on port ${PORT}`);
+});
+
+initializeServices();
