@@ -6,9 +6,8 @@
     "dir": "."
   },
   "deploy": {
-    "type": "dockerfile",
-    "dockerfilePath": "./Dockerfile",
-    "port": 80
+    "command": "npx serve -s build",
+    "port": 3000
   },
   "envVars": {
     "NODE_ENV": "production"
