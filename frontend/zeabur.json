@@ -1,0 +1,15 @@
+{
+  "name": "followtrain-frontend",
+  "version": "1.0.0",
+  "build": {
+    "command": "npm ci && npm run build",
+    "dir": "."
+  },
+  "deploy": {
+    "command": "npx serve -s build",
+    "port": 3000
+  },
+  "envVars": {
+    "NODE_ENV": "production"
+  }
+}
