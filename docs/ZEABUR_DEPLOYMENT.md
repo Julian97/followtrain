@@ -107,7 +107,7 @@ Redis caching is enabled automatically when the `REDIS_URL` environment variable
 - Train data (1-hour TTL)
 - Statistics data (10-minute TTL)
 
-For more details about the Redis implementation, see [REDIS_IMPLEMENTATION.md](REDIS_IMPLEMENTATION.md).
+For more details about the Redis implementation, see [Redis Implementation](REDIS_IMPLEMENTATION.md).
 
 ## 🔁 CI/CD with Zeabur
 
