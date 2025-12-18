@@ -8,6 +8,7 @@ FollowTrain enables group social media following through coordinated 'trains'.
 - Real-time participant tracking
 - Mobile-responsive React frontend
 - Scalable Node.js API backend
+- Redis caching for improved performance
 
 ## Quick Start
 
@@ -34,7 +35,8 @@ See [.env.example](backend/.env.example) files in backend and frontend directori
 ## Documentation
 - [Zeabur Deployment Guide](docs/ZEABUR_DEPLOYMENT.md)
 - [Database Configuration for Zeabur](docs/DATABASE_ZEABUR.md)
+- [Redis Implementation](docs/REDIS_IMPLEMENTATION.md)
 - [Original README](docs/README.md)
 
 ## Architecture
-Decoupled frontend/backend with PostgreSQL persistence
+Decoupled frontend/backend with PostgreSQL persistence and Redis caching

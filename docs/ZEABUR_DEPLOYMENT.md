@@ -4,10 +4,11 @@ This guide explains how to deploy the FollowTrain application on Zeabur, a moder
 
 ## 🚀 Deployment Architecture
 
-FollowTrain consists of three main components that need to be deployed:
+FollowTrain consists of four main components that need to be deployed:
 1. **Frontend** - React application (Port 3000)
 2. **Backend** - Node.js API server (Port 3001)
 3. **Database** - PostgreSQL database
+4. **Cache** - Redis cache (Optional but recommended)
 
 ## 📋 Prerequisites
 
@@ -28,7 +29,17 @@ FollowTrain consists of three main components that need to be deployed:
    - Plan: Free or Paid based on your needs
 5. Once deployed, note the `DATABASE_URL` from the service environment variables
 
-### Phase 2: Backend Deployment
+### Phase 2: Redis Cache Setup (Optional but Recommended)
+
+1. In your Zeabur project, click "Add Service"
+2. Select "Redis" from the service templates
+3. Configure the Redis service:
+   - Name: `followtrain-redis`
+   - Version: 6.2 or later
+   - Plan: Free or Paid based on your needs
+4. Once deployed, Zeabur will automatically inject the `REDIS_CONNECTION_STRING` environment variable to services that reference it
+
+### Phase 3: Backend Deployment
 
 1. In your Zeabur project, click "Add Service"
 2. Select "Git Repository" and connect your GitHub account
@@ -48,7 +59,7 @@ FollowTrain consists of three main components that need to be deployed:
    ```
 7. Click "Deploy" and wait for the build to complete
 
-### Phase 3: Frontend Deployment
+### Phase 4: Frontend Deployment
 
 1. In your Zeabur project, click "Add Service"
 2. Select "Git Repository" and connect your GitHub account
@@ -74,6 +85,7 @@ FollowTrain consists of three main components that need to be deployed:
 | `PORT` | Server port | `3001` |
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@host:port/db` |
 | `DATABASE_SSL_MODE` | SSL requirement | `require` |
+| `REDIS_URL` | Redis connection string | `${REDIS_CONNECTION_STRING}` |
 
 ### Backend Optional Variables (Social Media APIs)
 | Variable | Description |
@@ -86,6 +98,16 @@ FollowTrain consists of three main components that need to be deployed:
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `REACT_APP_API_URL` | Backend API URL | `https://your-backend.zeabur.app` |
+
+## Redis Caching
+
+Redis caching is enabled automatically when the `REDIS_URL` environment variable is set. This provides significant performance improvements by caching:
+
+- Social media profile data (5-minute TTL)
+- Train data (1-hour TTL)
+- Statistics data (10-minute TTL)
+
+For more details about the Redis implementation, see [REDIS_IMPLEMENTATION.md](REDIS_IMPLEMENTATION.md).
 
 ## 🔁 CI/CD with Zeabur
 
