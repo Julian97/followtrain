@@ -21,7 +21,6 @@ FollowTrain is a web application that simplifies social following workflows. It 
 
 ## Features
 
-- [Describe core following/management feature]
 - Frontend interface for interacting with the platform
 - Dockerised backend for consistent deployment
 - Deployed on Zeabur via GitHub CI/CD
